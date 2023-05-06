@@ -1,6 +1,6 @@
 {
     "name": "prime-intersection-grid",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "main": "prime-intersection-grid.js",
     "devDependencies": {
         "chai": "^4.3.7",
@@ -13,6 +13,7 @@
         "container-test": "docker build . -t prime-intersection-grid -f ./containers/test.dockerfile; docker logs --follow \"$(docker run -d prime-intersection-grid)\""
     },
     "dependencies": {
+        "polygonal-numbers": "^0.0.1",
         "primes-and-factors": "^1.3.3"
     }
 }

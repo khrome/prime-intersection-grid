@@ -1,5 +1,6 @@
 import PAF from 'primes-and-factors';
 const { isPrime, getPrimeExponentObject } = PAF;
+import { getStandardPolygonality, getSGonalityDetailUpTo } from 'polygonal-numbers';
 
 const indexMap = [
     null,
@@ -78,6 +79,19 @@ const isProthNumber = (n)=>{
     return false;
 }
 
+const dedupedConcat = (a, b, id)=>{
+    if(id){
+        return a.map((item)=>{
+            return this[item[id]] || item;
+        }, b.reduce((r, item)=>{
+            r[item[id]] = item;
+            return r;
+        }, {}));
+    }else{
+        return a.concat(b.filter((item)=> a.indexOf(item) === -1))
+    }
+};
+
 
 export class Grid{
     constructor(options={}){
@@ -106,60 +120,129 @@ export class Grid{
                     (coordinateIsPrime, origin, axisIndex)=>{
                         const offset = -1 * origin[axisIndex];
                         const localValue = coordinate + offset;
-                        originIsPrime[axisIndex] = PAF.isPrime(localValue)
+                        if(!isPrimes[index]) isPrimes[index] = [];
+                        isPrimes[index][axisIndex] = PAF.isPrime(localValue);
+                        originIsPrime[axisIndex] = originIsPrime[axisIndex] || isPrimes[index][axisIndex];
                         return coordinateIsPrime || originIsPrime[axisIndex];
                     }, false
                 )
             }, false
         );
+        const has = {};
+        const coordinateResults = [];
+        const allIs = { twin: true, cousin: true, sexy: true, identity: true};
+        const processDigits = (primes, is)=>{
+            const digits = [];
+            Object.keys(primes).forEach((prime)=>{
+                (""+prime).split('').forEach((char)=>{
+                    if(digits.indexOf(char) === -1) digits.push(parseInt(char));
+                })
+            });
+            //digits.forEach((digit)=>{
+                //if(allDigits.indexOf(digit) === -1) allDigits.push(digit);
+            //});
+            return digits;
+        };
+        const processPrimeCoordinate = (coordinate)=>{
+            const primes = {};
+            primes[coordinate] = 1;
+            const is = {};
+            const primesList = Object.keys(primes);
+            const digits = processDigits([coordinate], is)
+            const primeDigits = processDigits(primes, is);
+            Object.keys(primesIndex).forEach((type)=>{
+                is[type] = primesIndex[type].indexOf(coordinate) !== -1;
+                allIs[type] = true;
+            });
+            const twins = (isPrime(coordinate-2)?1:0) +  (isPrime(coordinate+2)?1:0);
+            const cousins = isPrime(coordinate-4)?1:0 +  isPrime(coordinate+4)?1:0;
+            const sexys = isPrime(coordinate-6)?1:0 +  isPrime(coordinate+6)?1:0;
+            is.twin = !!twins;
+            is.triplet = twins === 2;
+            is.cousin = !!cousins;
+            is.sexy = !!sexys;
+            is.familial = (twins + cousins) > 0;
+            is.social = (twins + cousins + sexys) > 0;
+            is.solitary = !is.familial;
+            /*Object.keys(is).forEach((type)=>{
+                has[type] = has[type] || is[type];
+                allIs[type] = allIs[type] && is[type];
+            });*/
+            return {
+                prime: true,
+                primes,
+                primeDigits,
+                digits,
+                is
+            };
+        };
+        const processCompositeCoordinate = (coordinate)=>{
+            const primes = PAF.getPrimeExponentObject(coordinate);
+            const is = getSGonalityDetailUpTo(coordinate, 20, true);
+            Object.keys(is).forEach((key)=>{
+                is[key] = !!is[key];
+            });
+            const primesList = Object.keys(primes);
+            const coordSummary = {};
+            coordSummary[coordinate] = 1;
+            const digits = processDigits(coordSummary, is)
+            const primeDigits = processDigits(primes, is);
+            /*Object.keys(is).forEach((type)=>{
+                has[type] = has[type] || is[type];
+                //allIs[type] = allIs[type] && is[type];
+            });*/
+            return {
+                composite: true,
+                primes,
+                primeDigits,
+                digits,
+                is
+            }
+        };
         const allOriginsPrime = originIsPrime.reduce(((agg, isPrime)=> agg || isPrime ), false);
-        if(allOriginsPrime){ //are all the coords prime?
-            const has = {};
-            const allIs = { twin: true, cousin: true, sexy: true, identity: true};
-            const allDigits = [];
-            const result = coordinates.reduce((agg, coordinate, index)=>{
-                const primes = PAF.getPrimeExponentObject(coordinate);
-                const primesList = Object.keys(primes);
-                const digits = [];
-                Object.keys(primes).forEach((prime)=>{
-                    (""+prime).split('').forEach((char)=>{
-                        if(digits.indexOf(char) === -1) digits.push(parseInt(char));
-                    })
-                });
-                digits.forEach((digit)=>{
-                    if(allDigits.indexOf(digit) === -1) allDigits.push(digit);
-                });
-                const is = {};
-                Object.keys(primesIndex).forEach((type)=>{
-                    is[type] = primesIndex[type].indexOf(coordinate) !== -1;
-                    allIs[type] = true;
-                });
-                is.twin = (isPrime(coordinate-2) || isPrime(coordinate+2));
-                is.cousin = (isPrime(coordinate-4) || isPrime(coordinate+4));
-                is.sexy = (isPrime(coordinate-4) || isPrime(coordinate+4));
-                is.identity = primesList.length === 1 && primesList[0] === ''+coordinate;
-                Object.keys(is).forEach((type)=>{
-                    has[type] = has[type] || is[type];
-                    allIs[type] = allIs[type] && is[type];
-                });
-                agg[
-                    (indexMap[coordinates.length] && this.options.map)?
-                    indexMap[coordinates.length].indices[index]:
-                    index
-                ] = {
-                    primes,
-                    digits,
-                    is
-                };
-                return agg;
-            }, {});
-            result.digits = allDigits;
-            result.has = has;
-            result.is = allIs;
-            result.isFullyPrime = isFullyPrime;
-            result.primeAxes = isPrimes;
-            return result;
-        }
-        return {}
+        const allDigits = [];
+        const result = coordinates.reduce((agg, coordinate, index)=>{
+            this.origins.reduce((agg2, coordinate2, index2)=>{
+                const coordIsPrime = isPrimes[index, index2];
+            });
+            const coordIsPrime = PAF.isPrime(coordinate);
+            const result = coordIsPrime?
+                processPrimeCoordinate(coordinate):
+                processCompositeCoordinate(coordinate);
+            coordinateResults[index] = result;
+            agg[
+                (indexMap[coordinates.length] && this.options.map)?
+                indexMap[coordinates.length].indices[index]:
+                index
+            ] = result;
+            return agg;
+        }, {});
+        Object.keys(allIs).forEach((key)=>{
+            allIs[key] = !!allIs[key];
+        });
+        result.has = {};
+        result.is = {};
+        result.primeDigits = dedupedConcat(
+            result.x.primeDigits, 
+            result.y.primeDigits
+        )
+        result.digits = dedupedConcat(
+            result.x.digits, 
+            result.y.digits
+        )
+        Object.keys(result.x.is).concat(Object.keys(result.y.is)).forEach((key)=>{
+            result.has[key] = result.x.is[key] || result.y.is[key];
+            result.is[key] = result.x.is[key] && result.y.is[key];
+        });
+        result.isFullyPrime = coordinateResults.reduce(
+            ((agg, item)=> agg && (item.prime || false) ), true
+        ) && coordinateResults.length;
+        result.positional = coordinateResults;
+        result.prime = true;
+        delete result.x.is['undefined'];
+        delete result.y.is['undefined'];
+        delete result.is['undefined'];
+        delete result.has['undefined'];
+        return result;
     }
 }
