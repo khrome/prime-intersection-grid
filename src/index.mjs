@@ -1,5 +1,4 @@
-import PAF from 'primes-and-factors';
-const { isPrime, getPrimeExponentObject } = PAF;
+import { isPrime, getPrimeExponentObject } from './prime.mjs';
 import { getStandardPolygonality, getSGonalityDetailUpTo } from 'polygonal-numbers';
 
 const indexMap = [
@@ -121,7 +120,7 @@ export class Grid{
                         const offset = -1 * origin[axisIndex];
                         const localValue = coordinate + offset;
                         if(!isPrimes[index]) isPrimes[index] = [];
-                        isPrimes[index][axisIndex] = PAF.isPrime(localValue);
+                        isPrimes[index][axisIndex] = isPrime(localValue);
                         originIsPrime[axisIndex] = originIsPrime[axisIndex] || isPrimes[index][axisIndex];
                         return coordinateIsPrime || originIsPrime[axisIndex];
                     }, false
@@ -177,7 +176,7 @@ export class Grid{
             };
         };
         const processCompositeCoordinate = (coordinate)=>{
-            const primes = PAF.getPrimeExponentObject(coordinate);
+            const primes = getPrimeExponentObject(coordinate);
             const is = getSGonalityDetailUpTo(coordinate, 20, true);
             Object.keys(is).forEach((key)=>{
                 is[key] = !!is[key];
@@ -205,7 +204,7 @@ export class Grid{
             this.origins.reduce((agg2, coordinate2, index2)=>{
                 const coordIsPrime = isPrimes[index, index2];
             });
-            const coordIsPrime = PAF.isPrime(coordinate);
+            const coordIsPrime = isPrime(coordinate);
             const result = coordIsPrime?
                 processPrimeCoordinate(coordinate):
                 processCompositeCoordinate(coordinate);

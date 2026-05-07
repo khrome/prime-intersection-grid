@@ -1,6 +1,6 @@
 import * as chai from 'chai';
 const should = (chai.should?chai:window.chai).should();
-import { Grid } from '../prime-intersection-grid.js';
+import { Grid } from '../src/index.mjs';
 
 describe('prime-intersection-grid', ()=>{
    describe('performs a simple test suite', ()=>{
